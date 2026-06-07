@@ -1,0 +1,9 @@
+[package]
+name = "halo2-transfers"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+halo2_proofs = "0.3.0"
+halo2curves = "0.3.0"
+ff = "0.13.0"
