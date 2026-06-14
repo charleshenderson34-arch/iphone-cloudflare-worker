@@ -1,4 +1,4 @@
-mport { createWalletClient, http, parseAbi, parseUnits } from 'viem';
+import { createWalletClient, http, parseAbi, parseUnits } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { base } from 'viem/chains';
 
