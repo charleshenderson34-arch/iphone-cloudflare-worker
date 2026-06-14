@@ -1,0 +1,7 @@
+{
+  "name": "nexus-sync",
+  "version": "1.0.0",
+  "dependencies": {
+    "viem": "^2.0.0"
+  }
+}
