@@ -2,7 +2,7 @@ import { createWalletClient, http, parseAbi, parseUnits } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { base } from 'viem/chains';
 
-const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const USDC_ADDRESS = '0x21117071756a9789c45ade0cfb40e7bce62ce9f0'
 
 export default {
   async fetch(request, env) {
