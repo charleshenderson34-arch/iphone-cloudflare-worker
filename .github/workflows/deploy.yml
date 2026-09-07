@@ -1,15 +1,72 @@
-name: Deploy to Cloudflare
+name: Deploy to Sentio
+
 on:
-  push:
-    branches:
-      - main
+ push:
+   branches: [main]
+   paths:
+     - 'subgraph.yaml'
+     - 'schema.graphql'
+     - 'src/**'
+     - 'abis/**'
+
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+ build:
+   runs-on: ubuntu-latest
+   steps:
+     - uses: actions/checkout@v4
+
+     - uses: actions/setup-node@v4
+       with:
+         node-version: '20'
+
+     - name: Enable Corepack (for yarn)
+       run: corepack enable
+
+     - name: Install dependencies
+       run: yarn install --frozen-lockfile
+
+     - name: Build processor
+       run: yarn build
+
+     - name: Upload build artifact
+       uses: actions/upload-artifact@v4
+       with:
+         name: build-output
+         path: build/
+         retention-days: 1
+
+ deploy:
+   needs: build
+   runs-on: ubuntu-latest
+   strategy:
+     matrix:
+       owner:
+         - charles_henderson34
+         - hendfam-partners-ATX
+   steps:
+     - uses: actions/checkout@v4
+
+     - uses: actions/setup-node@v4
+       with:
+         node-version: '20'
+
+     - name: Enable Corepack (for yarn)
+       run: corepack enable
+
+     - name: Install dependencies
+       run: yarn install --frozen-lockfile
+
+     - name: Download build artifact
+       uses: actions/download-artifact@v4
+       with:
+         name: build-output
+         path: build/
+
+     - name: Login to Sentio
+       run: npx -y -p @sentio/cli sentio login --api-key ${{ secrets.SENTIO_API_KEY }}
+
+     - name: Upload processor
+       run: yarn upload --host https://app.sentio.xyz --owner ${{ matrix.owner }} --name coinbase_wrapped_eth
+
+     - name: Deploy subgraph
+       run: npx @sentio/cli graph deploy --owner ${{ matrix.owner }} --name coinbase_wrapped_eth
