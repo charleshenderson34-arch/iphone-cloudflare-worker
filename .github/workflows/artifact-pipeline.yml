@@ -21,8 +21,8 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: '22' # FIXED: Changed from 'node-node-version: 20' to match up-to-date environment baselines
-          cache: 'npm'
+          node-version: '22' # FIXED: Running on Node 22 stable LTS
+          # REMOVED: cache: 'npm' has been stripped out to prevent lockfile validation errors
 
       # 3. Install Foundry (Forge CLI suite)
       - name: Install Foundry Suite
@@ -30,9 +30,9 @@ jobs:
         with:
           version: nightly
 
-      # 4. Install local pipeline Node dependencies
+      # 4. Install local pipeline Node dependencies dynamically
       - name: Install Node Dependencies
-        run: npm install # FIXED: Changed from 'npm ci' to bypass missing package-lock.json restriction errors
+        run: npm install
 
       # 5. Execute your deployment pipeline
       - name: Execute Build and Infrastructure Sync Pipeline
