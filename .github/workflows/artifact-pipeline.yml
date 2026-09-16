@@ -3,8 +3,8 @@ name: Contract Artifact Deployment Pipeline
 on:
   push:
     branches:
-      - main # Triggers the pipeline on every push to the main branch
-  workflow_dispatch: # Allows you to manually trigger this workflow via the GitHub UI
+      - main
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -15,14 +15,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive # Compiles dependencies properly if you use git submodules for smart contracts
+          submodules: recursive
 
       # 2. Setup Node.js workspace environment
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: '22' # FIXED: Running on Node 22 stable LTS
-          # REMOVED: cache: 'npm' has been stripped out to prevent lockfile validation errors
+          node-version: '22'
 
       # 3. Install Foundry (Forge CLI suite)
       - name: Install Foundry Suite
@@ -30,14 +29,27 @@ jobs:
         with:
           version: nightly
 
-      # 4. Install local pipeline Node dependencies dynamically
-      - name: Install Node Dependencies
-        run: aptos move pubish --included-artifacts all
+      # 4. Initialize package layer, Wrangler configuration, and KV Bindings on the fly
+      - name: Initialize App Workspace and wrangler.toml Matrix
+        run: |
+          npm init -y
+          npm install wrangler child_process fs path
+          
+          # Force create a production wrangler.toml file mapping out your active configurations
+          cat <<EOF > wrangler.toml
+          name = "aptos-artifact-pipeline"
+          compatibility_date = "2026-09-16"
+          
+          kv_namespaces = [
+            { binding = "aptos_artifacts", id = "PENDING_AUTO_ASSIGNMENT" }
+          ]
+          EOF
+          
+          console.log("Dynamically initialized clean environment configs with KV binding maps.");
 
       # 5. Execute your deployment pipeline
       - name: Execute Build and Infrastructure Sync Pipeline
         run: node pipeline.js
         env:
-          # Passes your private secrets directly into the Wrangler shell instance securely
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
