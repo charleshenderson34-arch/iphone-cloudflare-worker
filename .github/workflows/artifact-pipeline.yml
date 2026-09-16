@@ -1,0 +1,43 @@
+name: Contract Artifact Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - main # Triggers the pipeline on every push to the main branch
+  workflow_dispatch: # Allows you to manually trigger this workflow via the GitHub UI
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Pull down the source repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive # Compiles dependencies properly if you use git submodules for smart contracts
+
+      # 2. Setup Node.js workspace environment
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-node-version: '20'
+          cache: 'npm'
+
+      # 3. Install Foundry (Forge CLI suite)
+      - name: Install Foundry Suite
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      # 4. Install local pipeline Node dependencies
+      - name: Install Node Dependencies
+        run: npm ci
+
+      # 5. Execute your deployment pipeline
+      - name: Execute Build and Infrastructure Sync Pipeline
+        run: node pipeline.js
+        env:
+          # Passes your private secrets directly into the Wrangler shell instance securely
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
