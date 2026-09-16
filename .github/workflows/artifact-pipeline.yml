@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
 
       # 3. Install Foundry (Forge CLI suite)
       - name: Install Foundry Suite
@@ -33,8 +33,9 @@ jobs:
       - name: Initialize App Workspace and wrangler.toml Matrix
         run: |
           npm init -y
+          npm install -g @aptos-labs/ts-sdk@latest
           npm install wrangler child_process fs path
-          npm install-scripts approve --all
+          
           # Force create a production wrangler.toml file mapping out your active configurations
           cat <<EOF > wrangler.toml
           name = "aptos-artifact-pipeline"
@@ -45,7 +46,8 @@ jobs:
           ]
           EOF
           
-          console.log("Dynamically initialized clean environment configs with KV binding maps.");
+          # FIXED: Swapped out broken JavaScript syntax for a native bash print statement
+          echo "Dynamically initialized clean environment configs with KV binding maps."
 
       # 5. Execute your deployment pipeline
       - name: Execute Build and Infrastructure Sync Pipeline
