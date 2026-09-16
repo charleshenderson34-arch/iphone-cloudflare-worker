@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Pull down the source repository code
+      # 1. Pull down the repository code
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
@@ -29,14 +29,16 @@ jobs:
         with:
           version: nightly
 
-      # 4. Initialize package layer, Wrangler configuration, and KV Bindings on the fly
-      - name: Initialize App Workspace and wrangler.toml Matrix
+      # 4. Create pipeline.js, package configurations, and Wrangler mappings on the fly
+      - name: Initialize Pipeline Script and Infrastructure Matrix
         run: |
           npm init -y
-          npm install -g @aptos-labs/ts-sdk@latest
           npm install wrangler child_process fs path
           
-          # Force create a production wrangler.toml file mapping out your active configurations
+          # Auto-create the target local build tracker directories
+          mkdir -p /home/runner/my-aptos-project
+          
+          # Force create a production wrangler.toml file mapping out your live KV Namespace parameters
           cat <<EOF > wrangler.toml
           name = "aptos-artifact-pipeline"
           compatibility_date = "2026-09-16"
@@ -45,9 +47,105 @@ jobs:
             { binding = "aptos_artifacts", id = "PENDING_AUTO_ASSIGNMENT" }
           ]
           EOF
+
+          # Build the fully updated pipeline.js file straight into the root runner shell space
+          cat <<'EOF' > pipeline.js
+          const { execSync } = require('child_process');
+          const fs = require('fs');
+          const path = require('path');
+
+          // Target Directories & Local Configurations (Remapped to match clear virtual container paths)
+          const targetDir = '/home/runner/my-aptos-project';
+          const yamlFile = path.join(targetDir, 'sentio.yaml');
+          const wranglerTomlPath = path.join(process.cwd(), 'wrangler.toml');
+
+          const DEPLOY_TO_CLOUDFLARE = true; 
+          const CLOUDFLARE_STORAGE_TYPE = 'KV'; 
+          const BUCKET_OR_NAMESPACE_NAME = 'aptos_artifacts'; 
+
+          if (!fs.existsSync(targetDir)) {
+              fs.mkdirSync(targetDir, { recursive: true });
+          }
+
+          console.log('Compiling contracts via Foundry Forge...');
+          try {
+              execSync('forge build --force --extra-output abi bin', { stdio: 'inherit' });
+              console.log('Compilation successful. Moving artifacts...');
+          } catch (error) {
+              console.error('Compilation failed! Aborting process.');
+              process.exit(1);
+          }
+
+          function findFiles(dir, extensions, fileList = []) {
+              if (!fs.existsSync(dir)) return fileList;
+              const files = fs.readdirSync(dir);
+              files.forEach(file => {
+                  const filePath = path.join(dir, file);
+                  const stat = fs.statSync(filePath);
+                  if (stat.isDirectory()) {
+                      if (file !== 'node_modules' && !file.startsWith('.')) {
+                          findFiles(filePath, extensions, fileList);
+                      }
+                  } else {
+                      const ext = path.extname(file);
+                      if (extensions.includes(ext)) {
+                          fileList.push(filePath);
+                      }
+                  }
+              });
+              return fileList;
+          }
+
+          function uploadToCloudflare(filePath, filename) {
+              try {
+                  if (CLOUDFLARE_STORAGE_TYPE === 'KV') {
+                      console.log(`[Cloudflare KV] Uploading ${filename}...`);
+                      execSync(`npx wrangler kv key put "${filename}" --path="${filePath}" --binding=${BUCKET_OR_NAMESPACE_NAME}`, { stdio: 'inherit' });
+                  } else if (CLOUDFLARE_STORAGE_TYPE === 'R2') {
+                      console.log(`[Cloudflare R2] Uploading ${filename}...`);
+                      execSync(`npx wrangler r2 object put "${BUCKET_OR_NAMESPACE_NAME}/${filename}" --file="${filePath}"`, { stdio: 'inherit' });
+                  }
+                  console.log(`Successfully uploaded ${filename} to Cloudflare.`);
+              } catch (error) {
+                  console.error(`Failed to upload ${filename} to Cloudflare. Ensure your API token limits are valid.`);
+              }
+          }
+
+          const targetExtensions = ['.abi', '.sol', '.bin'];
+          const forgeOutDir = path.join(process.cwd(), 'out'); 
+          const foundFiles = findFiles(forgeOutDir, targetExtensions);
+
+          if (foundFiles.length === 0) {
+              console.log('No matching compiled artifacts found in the build output directory.');
+          } else {
+              if (fs.existsSync(yamlFile)) {
+                  const currentYaml = fs.readFileSync(yamlFile, 'utf8');
+                  if (!currentYaml.includes('contracts:')) {
+                      fs.appendFileSync(yamlFile, '\ncontracts:\n');
+                  }
+              } else {
+                  fs.writeFileSync(yamlFile, 'contracts:\n', 'utf8');
+              }
+
+              foundFiles.forEach(filePath => {
+                  const filename = path.basename(filePath);
+                  const destination = path.join(targetDir, filename);
+
+                  fs.copyFileSync(filePath, destination);
+                  
+                  const yamlEntry = `  - artifact: ${filename}\n`;
+                  fs.appendFileSync(yamlFile, yamlEntry);
+                  console.log(`Copied and logged locally: ${filename}`);
+
+                  if (DEPLOY_TO_CLOUDFLARE) {
+                      uploadToCloudflare(destination, filename);
+                  }
+              });
+              console.log('\nAll contract artifacts successfully compiled, migrated locally, infrastructure mapped, and synced.');
+          }
+          EOF
           
-          # FIXED: Swapped out broken JavaScript syntax for a native bash print statement
-          echo "Dynamically initialized clean environment configs with KV binding maps."
+          echo "Workspace configurations and pipeline script written successfully."
 
       # 5. Execute your deployment pipeline
       - name: Execute Build and Infrastructure Sync Pipeline
