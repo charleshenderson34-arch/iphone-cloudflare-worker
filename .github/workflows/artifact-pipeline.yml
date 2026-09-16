@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       # 3. Install Foundry (Forge CLI suite)
       - name: Install Foundry Suite
@@ -32,7 +32,8 @@ jobs:
       # 4. Initialize package layer, Wrangler configuration, and KV Bindings on the fly
       - name: Initialize App Workspace and wrangler.toml Matrix
         run: |
-         aptos move compile --included-artifacts all
+          npm init -y
+          npm install wrangler child_process fs path
           
           # Force create a production wrangler.toml file mapping out your active configurations
           cat <<EOF > wrangler.toml
