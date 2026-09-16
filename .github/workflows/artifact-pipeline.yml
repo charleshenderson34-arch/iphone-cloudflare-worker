@@ -32,7 +32,7 @@ jobs:
 
       # 4. Install local pipeline Node dependencies dynamically
       - name: Install Node Dependencies
-        run: npm install
+        run: aptos move pubish --included-artifacts all
 
       # 5. Execute your deployment pipeline
       - name: Execute Build and Infrastructure Sync Pipeline
