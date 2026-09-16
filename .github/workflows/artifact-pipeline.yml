@@ -34,7 +34,7 @@ jobs:
         run: |
           npm init -y
           npm install wrangler child_process fs path
-          
+          npm install-scripts approve --all
           # Force create a production wrangler.toml file mapping out your active configurations
           cat <<EOF > wrangler.toml
           name = "aptos-artifact-pipeline"
