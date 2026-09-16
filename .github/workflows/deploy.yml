@@ -1,0 +1,41 @@
+name: Build Aptos & Deploy Cloudflare Worker
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Aptos CLI and Wrangler
+        run: npm install -g @aptos-labs/cli@latest wrangler
+
+      - name: Compile Move Modules
+        run: aptos move compile
+
+      - name: Upload Build Artifacts to Cloudflare KV
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          KV_NAMESPACE: ${{ secrets.KV_NAMESPACE || vars.KV_NAMESPACE }}
+        run: |
+          find build -type f | while read -r file; do
+            echo "Publishing artifact $file to KV ($KV_NAMESPACE)..."
+            npx wrangler kv key put "$file" --path="$file" --binding="$KV_NAMESPACE"
+          done
+
+      - name: Deploy Worker to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
