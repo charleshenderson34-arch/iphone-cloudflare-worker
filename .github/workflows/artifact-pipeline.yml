@@ -35,7 +35,7 @@ jobs:
           npm init -y
           npm install wrangler child_process fs path
           npm install npx
-          npm install @aptos-labs/ts-sdk@latest
+          npm install @aptos-labs/ts-sdk@lates
           npx aptos --install
           npx aptos --update
           npx aptos init
@@ -58,7 +58,7 @@ jobs:
           const path = require('path');
 
           // Target Directories & Local Configurations (Remapped to match clear virtual container paths)
-          const targetDir = '/Users/stevendyke/out';
+          const targetDir = '~/root';
           const yamlFile = path.join(targetDir, 'Move.toml');
           const wranglerTomlPath = path.join(process.cwd(), 'wrangler.toml');
 
