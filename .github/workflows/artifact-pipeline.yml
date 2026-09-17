@@ -34,9 +34,10 @@ jobs:
         run: |
           npm init -y
           npm install wrangler child_process fs path
+          npx aptos --install
+          npx aptos --update
+          npx aptos init
           
-          # Auto-create the target local build tracker directories
-          mkdir -p /home/runner/my-aptos-project
           
           # Force create a production wrangler.toml file mapping out your live KV Namespace parameters
           cat <<EOF > wrangler.toml
@@ -44,7 +45,7 @@ jobs:
           compatibility_date = "2026-09-16"
           
           kv_namespaces = [
-            { binding = "aptos_artifacts", id = "PENDING_AUTO_ASSIGNMENT" }
+            { binding = "aptos_artifacts", id = "KV_NAMESPACES" }
           ]
           EOF
 
@@ -55,8 +56,8 @@ jobs:
           const path = require('path');
 
           // Target Directories & Local Configurations (Remapped to match clear virtual container paths)
-          const targetDir = '/home/runner/my-aptos-project';
-          const yamlFile = path.join(targetDir, 'sentio.yaml');
+          const targetDir = '/Users/stevendyke/out';
+          const yamlFile = path.join(targetDir, 'Move.toml');
           const wranglerTomlPath = path.join(process.cwd(), 'wrangler.toml');
 
           const DEPLOY_TO_CLOUDFLARE = true; 
