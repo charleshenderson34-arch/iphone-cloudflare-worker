@@ -34,6 +34,8 @@ jobs:
         run: |
           npm init -y
           npm install wrangler child_process fs path
+          npm install npx
+          npm install @aptos-labs/ts-sdk@latest
           npx aptos --install
           npx aptos --update
           npx aptos init
