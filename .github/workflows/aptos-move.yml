@@ -1,0 +1,34 @@
+mkdir -p .github/workflows && cat << 'EOF' > .github/workflows/aptos-move.yml
+name: Aptos Move CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Aptos CLI
+        run: npm install -g @aptos-labs/cli@latest
+
+      - name: Verify Aptos CLI Installation
+        run: aptos --version
+
+      - name: Compile Move Modules
+        run: aptos move compile
+
+      - name: Run Move Tests
+        run: aptos move test --if-present
+EOF
