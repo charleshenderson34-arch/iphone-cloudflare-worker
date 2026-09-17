@@ -1,0 +1,34 @@
+cat << 'EOF' > .github/workflows/ci.yml
+name: Go CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        go-version: ['1.21', '1.22']
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        if: runner.os == 'Linux' # Run linter once on Linux
+
+      - name: Run Tests
+        run: go test -v -race ./...
+EOF
