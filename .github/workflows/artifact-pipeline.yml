@@ -1,158 +1,63 @@
-name: Contract Artifact Deployment Pipeline
+name: Nexus Network Move Build and Attest
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
 
 jobs:
-  build-and-deploy:
+  build-and-attest:
     runs-on: ubuntu-latest
 
-    steps:
-      # 1. Pull down the repository code
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+    # MANDATORY: Permissions required to mint Sigstore OIDC tokens
+    # and write the signed provenance artifact back to GitHub.
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
 
-      # 2. Setup Node.js workspace environment
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "24"
+          cache: "npm"
+          # Points to the lockfile at your repository root
+          cache-dependency-path: "package-lock.json" 
 
-      # 3. Install Foundry (Forge CLI suite)
-      - name: Install Foundry Suite
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      # 4. Create pipeline.js, package configurations, and Wrangler mappings on the fly
-      - name: Initialize Pipeline Script and Infrastructure Matrix
+      # Install Aptos CLI globally using the officially supported npm bundle wrapper
+      - name: Install Aptos CLI Toolchain
         run: |
-          npm init -y
-          npm install wrangler child_process fs path
-          npm install npx
-          npm install @aptos-labs/ts-sdk
+          npm install @aptos-labs/aptos-cli
           npx aptos --install
-          npx aptos --update
-          npx aptos init
-          
-          
-          # Force create a production wrangler.toml file mapping out your live KV Namespace parameters
-          cat <<EOF > wrangler.toml
-          name = "aptos-artifact-pipeline"
-          compatibility_date = "2026-09-16"
-          
-          kv_namespaces = [
-            { binding = "aptos_artifacts", id = "KV_NAMESPACES" }
-          ]
-          EOF
 
-          # Build the fully updated pipeline.js file straight into the root runner shell space
-          cat <<'EOF' > pipeline.js
-          const { execSync } = require('child_process');
-          const fs = require('fs');
-          const path = require('path');
+      - name: Install Root Dependencies
+        run: npm ci
 
-          // Target Directories & Local Configurations (Remapped to match clear virtual container paths)
-          const targetDir = '~/root';
-          const yamlFile = path.join(targetDir, 'Move.toml');
-          const wranglerTomlPath = path.join(process.cwd(), 'wrangler.toml');
+      # Compile the Move Package & generate the sparse publish payload artifact
+      - name: Compile and Build Publish Payload
+        # Instructs the runner to target your specific Move package folder
+        working-directory: aptos-core
+        run: |
+          ~/.local/bin/aptos move build-publish-payload \
+            --json-output-file ../nexus-publish-payload.json \
+            --included-artifacts sparse \
+            --assume-yes
 
-          const DEPLOY_TO_CLOUDFLARE = true; 
-          const CLOUDFLARE_STORAGE_TYPE = 'KV'; 
-          const BUCKET_OR_NAMESPACE_NAME = 'aptos_artifacts'; 
+      # Generate the Cryptographic Build Provenance using GitHub Attestations
+      - name: Generate Secure Build Attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          # Targets the generated payload sitting at the repository root
+          subject-path: "nexus-publish-payload.json"
 
-          if (!fs.existsSync(targetDir)) {
-              fs.mkdirSync(targetDir, { recursive: true });
-          }
-
-          console.log('Compiling contracts via Foundry Forge...');
-          try {
-              execSync('forge build --force --extra-output abi bin', { stdio: 'inherit' });
-              console.log('Compilation successful. Moving artifacts...');
-          } catch (error) {
-              console.error('Compilation failed! Aborting process.');
-              process.exit(1);
-          }
-
-          function findFiles(dir, extensions, fileList = []) {
-              if (!fs.existsSync(dir)) return fileList;
-              const files = fs.readdirSync(dir);
-              files.forEach(file => {
-                  const filePath = path.join(dir, file);
-                  const stat = fs.statSync(filePath);
-                  if (stat.isDirectory()) {
-                      if (file !== 'node_modules' && !file.startsWith('.')) {
-                          findFiles(filePath, extensions, fileList);
-                      }
-                  } else {
-                      const ext = path.extname(file);
-                      if (extensions.includes(ext)) {
-                          fileList.push(filePath);
-                      }
-                  }
-              });
-              return fileList;
-          }
-
-          function uploadToCloudflare(filePath, filename) {
-              try {
-                  if (CLOUDFLARE_STORAGE_TYPE === 'KV') {
-                      console.log(`[Cloudflare KV] Uploading ${filename}...`);
-                      execSync(`npx wrangler kv key put "${filename}" --path="${filePath}" --binding=${BUCKET_OR_NAMESPACE_NAME}`, { stdio: 'inherit' });
-                  } else if (CLOUDFLARE_STORAGE_TYPE === 'R2') {
-                      console.log(`[Cloudflare R2] Uploading ${filename}...`);
-                      execSync(`npx wrangler r2 object put "${BUCKET_OR_NAMESPACE_NAME}/${filename}" --file="${filePath}"`, { stdio: 'inherit' });
-                  }
-                  console.log(`Successfully uploaded ${filename} to Cloudflare.`);
-              } catch (error) {
-                  console.error(`Failed to upload ${filename} to Cloudflare. Ensure your API token limits are valid.`);
-              }
-          }
-
-          const targetExtensions = ['.abi', '.sol', '.bin'];
-          const forgeOutDir = path.join(process.cwd(), 'out'); 
-          const foundFiles = findFiles(forgeOutDir, targetExtensions);
-
-          if (foundFiles.length === 0) {
-              console.log('No matching compiled artifacts found in the build output directory.');
-          } else {
-              if (fs.existsSync(yamlFile)) {
-                  const currentYaml = fs.readFileSync(yamlFile, 'utf8');
-                  if (!currentYaml.includes('contracts:')) {
-                      fs.appendFileSync(yamlFile, '\ncontracts:\n');
-                  }
-              } else {
-                  fs.writeFileSync(yamlFile, 'contracts:\n', 'utf8');
-              }
-
-              foundFiles.forEach(filePath => {
-                  const filename = path.basename(filePath);
-                  const destination = path.join(targetDir, filename);
-
-                  fs.copyFileSync(filePath, destination);
-                  
-                  const yamlEntry = `  - artifact: ${filename}\n`;
-                  fs.appendFileSync(yamlFile, yamlEntry);
-                  console.log(`Copied and logged locally: ${filename}`);
-
-                  if (DEPLOY_TO_CLOUDFLARE) {
-                      uploadToCloudflare(destination, filename);
-                  }
-              });
-              console.log('\nAll contract artifacts successfully compiled, migrated locally, infrastructure mapped, and synced.');
-          }
-          EOF
-          
-          echo "Workspace configurations and pipeline script written successfully."
-
-      # 5. Execute your deployment pipeline
-      - name: Execute Build and Infrastructure Sync Pipeline
-        run: node pipeline.js
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      # Archive the verified artifact for your deployment pipeline
+      - name: Upload Attested Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-move-build
+          path: nexus-publish-payload.json
