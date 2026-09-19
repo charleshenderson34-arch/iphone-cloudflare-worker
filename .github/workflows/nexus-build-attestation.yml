@@ -39,18 +39,19 @@ jobs:
             --assume-yes \
             --profile default
 
-      # Compiles FraxGovernance and fetches the aptos-framework Git dependency
+      # FIXED: Added mkdir -p sources to satisfy Aptos compiler requirements
       - name: Compile and Build Publish Payload
         run: |
+          mkdir -p sources
           npx aptos move build-publish-payload \
             --package-dir . \
             --json-output-file nexus-publish-payload.json \
             --included-artifacts all \
             --assume-yes
 
-      # Cryptographically ties your payload to your GitHub Repository profile
+      # FIXED: Upgraded from v1 to v2 to solve the runner processing crash
       - name: Generate Secure Build Attestation
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v2
         with:
           subject-path: "nexus-publish-payload.json"
 
