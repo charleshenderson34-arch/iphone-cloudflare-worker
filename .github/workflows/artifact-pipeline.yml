@@ -19,16 +19,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Sets up standard environment targeting Node 24 
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: "24"
 
+      # Installs Aptos developer tools wrapper execution contexts
       - name: Install Aptos CLI Toolchain
         run: |
           npm install @aptos-labs/aptos-cli
           npx aptos --install
 
+      # Initialise the profile parameters matching your manifest specs
       - name: Initialize Aptos Profile
         run: |
           npx aptos init \
@@ -36,35 +39,22 @@ jobs:
             --assume-yes \
             --profile aptos
 
-      # FIXED: Safely searches for the manifest case-insensitively. 
-      # If missing, it prints the repository tree instead of crashing.
+      # Compiles the workspace using the verified root context manifest map folder
       - name: Compile and Build Publish Payload
         run: |
-          FOUND_PATH=$(find . -iname "Move.toml" -print -quit)
-          
-          if [ -z "$FOUND_PATH" ]; then
-            echo "=========================================================="
-            echo "❌ ERROR: Could not find Move.toml anywhere in the repository!"
-            echo "Showing visible files in your repository:"
-            echo "=========================================================="
-            find . -maxdepth 3 -not -path '*/.*' -not -path './node_modules*'
-            exit 1
-          fi
-
-          MOVE_DIR=$(dirname "$FOUND_PATH")
-          echo "✅ Found Move contract manifest folder in: $MOVE_DIR"
-          
           npx aptos move build-publish-payload \
-            --package-dir "$MOVE_DIR" \
+            --package-dir . \
             --json-output-file nexus-publish-payload.json \
             --included-artifacts all \
             --assume-yes
 
+      # Cryptographically ties your payload to your GitHub Repository profile
       - name: Generate Secure Build Attestation
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: "nexus-publish-payload.json"
 
+      # Export the final attested asset bundle
       - name: Upload Attested Artifact
         uses: actions/upload-artifact@v4
         with:
