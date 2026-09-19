@@ -24,17 +24,17 @@ jobs:
         with:
           node-version: "24"
 
-      # Install Aptos CLI tool wrapper globally
+      # Install Aptos CLI tool wrapper locally
       - name: Install Aptos CLI Toolchain
         run: |
           npm install @aptos-labs/aptos-cli
           npx aptos --install
 
-      # FIXED: Removed the empty directory generation and targeted the current 
-      # workspace root repository directory path directly.
+      # FIXED: Running with "npx aptos" instead of referencing explicit shell locations, 
+      # and targeting the workspace directory for the Move configuration search framework.
       - name: Compile and Build Publish Payload
         run: |
-          ~/.local/bin/aptos move build-publish-payload \
+          npx aptos move build-publish-payload \
             --package-dir . \
             --json-output-file nexus-publish-payload.json \
             --included-artifacts sparse \
