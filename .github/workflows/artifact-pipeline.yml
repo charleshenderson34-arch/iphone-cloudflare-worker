@@ -42,7 +42,9 @@ jobs:
       # Compiles FraxGovernance and fetches the aptos-framework Git dependency
       - name: Compile and Build Publish Payload
         run: |
+          npx aptos clean
           npx aptos move build-publish-payload \
+            --save-metadata
             --package-dir /private/var/root/attest-build-provenance \
             --json-output-file /Users/stevendyke/out/nexus_publish_payload.json \
             --included-artifacts all \
