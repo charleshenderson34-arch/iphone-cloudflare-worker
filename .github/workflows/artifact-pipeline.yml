@@ -19,7 +19,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Removed the dynamic caching instruction to bypass lockfile mapping requirements
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
@@ -31,12 +30,14 @@ jobs:
           npm install @aptos-labs/aptos-cli
           npx aptos --install
 
-      # Compile the Move Package & generate the sparse publish payload artifact
+      # FIXED: Creates the folder structure explicitly if it is missing or empty in Git
+      # and copies or sets up the compilation scope.
       - name: Compile and Build Publish Payload
-        working-directory: aptos-core
         run: |
+          mkdir -p aptos-core
           ~/.local/bin/aptos move build-publish-payload \
-            --json-output-file ../nexus-publish-payload.json \
+            --package-dir aptos-core \
+            --json-output-file nexus-publish-payload.json \
             --included-artifacts sparse \
             --assume-yes
 
