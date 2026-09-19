@@ -1,40 +1,60 @@
+name: Nexus Network Move Build and Attest
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-attest:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Setup environment using modern Node 24 standard
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-          cache: "npm"
-          # Points to the relative root directory of your cloned GitHub workspace
-          cache-dependency-path: "package-lock.json" 
 
-      # Install Aptos CLI globally using the officially supported npm bundle wrapper
+      # Install Aptos CLI tool wrapper locally
       - name: Install Aptos CLI Toolchain
         run: |
           npm install @aptos-labs/aptos-cli
           npx aptos --install
 
-      - name: Install Dependencies
-        # Runs directly in the repository root directory
-        run: npm ci
+      # Initialise the Aptos local configuration context
+      - name: Initialize Aptos Profile
+        run: |
+          npx aptos init \
+            --network testnet \
+            --assume-yes \
+            --profile default
 
-      # Compile the Move Package & generate the sparse publish payload artifact
+      # Compiles FraxGovernance and fetches the aptos-framework Git dependency
       - name: Compile and Build Publish Payload
         run: |
-          ~/.local/bin/aptos move build-publish-payload \
+          npx aptos move build-publish-payload \
+            --package-dir . \
             --json-output-file nexus-publish-payload.json \
-            --included-artifacts sparse \
+            --included-artifacts all \
             --assume-yes
 
-      # Generate the Cryptographic Build Provenance using GitHub Attestations
+      # Cryptographically ties your payload to your GitHub Repository profile
       - name: Generate Secure Build Attestation
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: "nexus-publish-payload.json"
 
-      # Archive the verified artifact for your deployment pipeline
+      # Export the final attested asset bundle
       - name: Upload Attested Artifact
         uses: actions/upload-artifact@v4
         with:
