@@ -24,13 +24,11 @@ jobs:
         with:
           node-version: "24"
 
-      # Install Aptos CLI tool wrapper locally
       - name: Install Aptos CLI Toolchain
         run: |
           npm install @aptos-labs/aptos-cli
           npx aptos --install
 
-      # Initialise the Testnet profile matching your parameters
       - name: Initialize Aptos Profile
         run: |
           npx aptos init \
@@ -38,15 +36,23 @@ jobs:
             --assume-yes \
             --profile aptos
 
-      # FIXED: Automatically finds where Move.toml resides and compiles it dynamically
+      # FIXED: Safely searches for the manifest case-insensitively. 
+      # If missing, it prints the repository tree instead of crashing.
       - name: Compile and Build Publish Payload
         run: |
-          MOVE_DIR=$(dirname $(find . -name "Move.toml" -print -quit))
-          if [ -z "$MOVE_DIR" ] || [ "$MOVE_DIR" = "." ]; then
-            echo "Move.toml not found in subdirectories. Trying root directory..."
-            MOVE_DIR="."
+          FOUND_PATH=$(find . -iname "Move.toml" -print -quit)
+          
+          if [ -z "$FOUND_PATH" ]; then
+            echo "=========================================================="
+            echo "❌ ERROR: Could not find Move.toml anywhere in the repository!"
+            echo "Showing visible files in your repository:"
+            echo "=========================================================="
+            find . -maxdepth 3 -not -path '*/.*' -not -path './node_modules*'
+            exit 1
           fi
-          echo "Found Move contract manifest folder in: $MOVE_DIR"
+
+          MOVE_DIR=$(dirname "$FOUND_PATH")
+          echo "✅ Found Move contract manifest folder in: $MOVE_DIR"
           
           npx aptos move build-publish-payload \
             --package-dir "$MOVE_DIR" \
@@ -54,13 +60,11 @@ jobs:
             --included-artifacts all \
             --assume-yes
 
-      # Generate the Cryptographic Build Provenance using GitHub Attestations
       - name: Generate Secure Build Attestation
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: "nexus-publish-payload.json"
 
-      # Archive the verified artifact for your deployment pipeline
       - name: Upload Attested Artifact
         uses: actions/upload-artifact@v4
         with:
