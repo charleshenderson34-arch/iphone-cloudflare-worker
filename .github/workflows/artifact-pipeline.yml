@@ -10,8 +10,6 @@ jobs:
   build-and-attest:
     runs-on: ubuntu-latest
 
-    # MANDATORY: Permissions required to mint Sigstore OIDC tokens
-    # and write the signed provenance artifact back to GitHub.
     permissions:
       id-token: write
       contents: read
@@ -21,24 +19,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Removed the dynamic caching instruction to bypass lockfile mapping requirements
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-          cache: "npm"
-          # FIXED: Points directly to the lockfile inside your project folder
-          cache-dependency-path: "aptos-core/package-lock.json" 
 
-      # Install Aptos CLI globally using the officially supported npm bundle wrapper
+      # Install Aptos CLI tool wrapper globally
       - name: Install Aptos CLI Toolchain
         run: |
           npm install @aptos-labs/aptos-cli
           npx aptos --install
-
-      - name: Install Dependencies
-        # FIXED: Changes directory to install your dependencies where the project lives
-        working-directory: aptos-core
-        run: npm ci
 
       # Compile the Move Package & generate the sparse publish payload artifact
       - name: Compile and Build Publish Payload
@@ -53,7 +44,6 @@ jobs:
       - name: Generate Secure Build Attestation
         uses: actions/attest-build-provenance@v1
         with:
-          # Targets the generated payload sitting at the repository root
           subject-path: "nexus-publish-payload.json"
 
       # Archive the verified artifact for your deployment pipeline
