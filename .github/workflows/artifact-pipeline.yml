@@ -30,13 +30,12 @@ jobs:
           npm install @aptos-labs/aptos-cli
           npx aptos --install
 
-      # FIXED: Creates the folder structure explicitly if it is missing or empty in Git
-      # and copies or sets up the compilation scope.
+      # FIXED: Removed the empty directory generation and targeted the current 
+      # workspace root repository directory path directly.
       - name: Compile and Build Publish Payload
         run: |
-          mkdir -p aptos-core
           ~/.local/bin/aptos move build-publish-payload \
-            --package-dir aptos-core \
+            --package-dir . \
             --json-output-file nexus-publish-payload.json \
             --included-artifacts sparse \
             --assume-yes
