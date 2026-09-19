@@ -37,7 +37,7 @@ jobs:
           npx aptos init \
             --network testnet \
             --assume-yes \
-            --profile default
+            --profile aptos 
 
       # Compiles FraxGovernance and fetches the aptos-framework Git dependency
       - name: Compile and Build Publish Payload
