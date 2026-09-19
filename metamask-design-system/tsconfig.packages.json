@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "esModuleInterop": true,
+    "lib": ["ES2020"],
+    "module": "Node16",
+    "isolatedModules": true,
+    "moduleResolution": "Node16",
+    "baseUrl": ".",
+    /**
+     * Here we ensure that TypeScript resolves `@metamask/*` imports to the
+     * uncompiled source code for packages that live in this repo.
+     *
+     * NOTE: This must be synchronized with the `moduleNameMapper` option in
+     * `jest.config.packages.js`.
+     */
+    "paths": {
+      "@metamask/*": ["packages/*/src"]
+    },
+    "strict": true,
+    "target": "ES2020"
+  }
+}
