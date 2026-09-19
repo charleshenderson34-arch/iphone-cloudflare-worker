@@ -1,0 +1,20 @@
+name = "doge-utxo-indexer"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Run every 2 minutes. Adjust to match Dogecoin's ~1 min block time vs. your
+# Alchemy rate limits.
+[triggers]
+crons = ["*/2 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "doge-utxo-indexer-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+[vars]
+SENTIO_INGEST_URL = "https://app.sentio.xyz/api/v1/event_logs/REPLACE_PROJECT/REPLACE_ENDPOINT"
+
+# Secrets (do NOT put these here — set via CLI):
+#   wrangler secret put ALCHEMY_API_KEY
+#   wrangler secret put SENTIO_API_KEY
