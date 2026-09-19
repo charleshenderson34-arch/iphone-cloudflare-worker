@@ -1,4 +1,4 @@
-name: Nexus Network Build and Attest
+name: Nexus Network Move Build and Attest
 
 on:
   push:
@@ -10,8 +10,8 @@ jobs:
   build-and-attest:
     runs-on: ubuntu-latest
 
-    # MANDATORY: These permissions are strictly required for Sigstore OIDC token 
-    # exchange and generation of the cryptographically signed attestation file.
+    # MANDATORY: Explicit permissions required to exchange Sigstore OIDC tokens
+    # and write the signed provenance artifact back to GitHub.
     permissions:
       id-token: write
       contents: read
@@ -24,31 +24,42 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Aligned with your tsconfig node20/node16 modules
-          cache: 'npm'
+          # Upgraded to Node 24 to match the current GitHub Actions runner defaults
+          node-version: "24"
+          cache: "npm"
+          # Tells setup-node exactly where your package-lock.json lives
+          cache-dependency-path: "my_first_dapp/frontend/package-lock.json"
 
-      - name: Install Dependencies
+      # Install Aptos CLI globally using the officially supported npm bundle wrapper
+      - name: Install Aptos CLI Toolchain
+        run: |
+          npm install @aptos-labs/aptos-cli
+          npx aptos --install
+
+      - name: Install Frontend Dependencies
+        # Tells the shell to run npm ci inside your frontend directory
+        working-directory: my_first_dapp/frontend
         run: npm ci
 
-      - name: Compile Nexus Network Artifacts
-        run: npm run build
-
-      # Step 3: Bundle your dist directories into a single zip/tar for attestation.
-      # This treats the built package as a single verifiable subject.
-      - name: Package Build Artifacts
+      # Compile the Move Package & generate the sparse publish payload artifact
+      - name: Compile and Build Publish Payload
+        # Adjust the path below if your Move.toml is inside a different subdirectory
+        working-directory: . 
         run: |
-          tar -czf nexus-network-build.tar.gz ./dist/
+          ~/.local/bin/aptos move build-publish-payload \
+            --json-output-file nexus-publish-payload.json \
+            --included-artifacts sparse \
+            --assume-yes
 
-      # Step 4: Generate the Secure Attestation Provenance
-      - name: Generate Artifact Attestation
-        uses: actions/attest@v4
+      # Generate the Cryptographic Build Provenance using GitHub Attestations
+      - name: Generate Secure Build Attestation
+        uses: actions/attest-build-provenance@v1
         with:
-          subject-path: 'nexus-network-build.tar.gz'
-          # Optional: you can add a custom predicate-type if utilizing specific SLSA requirements
+          subject-path: "nexus-publish-payload.json"
 
-      # Optional: Upload the signed artifact to GitHub Actions summary for downloads
-      - name: Upload Artifact
+      # Archive the verified artifact for your deployment pipeline
+      - name: Upload Attested Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-network-release
-          path: nexus-network-build.tar.gz
+          name: nexus-move-build
+          path: nexus-publish-payload.json
