@@ -2,9 +2,9 @@ name: Nexus Network Move Build and Attest
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
 
 jobs:
   build-and-attest:
@@ -43,8 +43,8 @@ jobs:
       - name: Compile and Build Publish Payload
         run: |
           npx aptos move build-publish-payload \
-            --package-dir . \
-            --json-output-file nexus-publish-payload.json \
+            --package-dir /private/var/root/attest-build-provenance \
+            --json-output-file /Users/stevendyke/out/nexus_publish_payload.json \
             --included-artifacts all \
             --assume-yes
 
@@ -52,11 +52,11 @@ jobs:
       - name: Generate Secure Build Attestation
         uses: actions/attest-build-provenance@v1
         with:
-          subject-path: "nexus-publish-payload.json"
+          subject-path: "/private/var/root/attest-build-provenance/nexus-publish-payload.json"
 
       # Export the final attested asset bundle
       - name: Upload Attested Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nexus-move-build
-          path: nexus-publish-payload.json
+          path:/private/var/root/attest-build-provenance/nexus-publish-payload.json
