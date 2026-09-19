@@ -1,7 +1,6 @@
 [package]
 name = "default"
 version = "1.0.0"
-authors = [HENDFAM INC]
 
 [addresses]
 
