@@ -30,14 +30,28 @@ jobs:
           npm install @aptos-labs/aptos-cli
           npx aptos --install
 
-      # FIXED: Running with "npx aptos" instead of referencing explicit shell locations, 
-      # and targeting the workspace directory for the Move configuration search framework.
+      # Initialise the Testnet profile matching your parameters
+      - name: Initialize Aptos Profile
+        run: |
+          npx aptos init \
+            --network testnet \
+            --assume-yes \
+            --profile aptos
+
+      # FIXED: Automatically finds where Move.toml resides and compiles it dynamically
       - name: Compile and Build Publish Payload
         run: |
+          MOVE_DIR=$(dirname $(find . -name "Move.toml" -print -quit))
+          if [ -z "$MOVE_DIR" ] || [ "$MOVE_DIR" = "." ]; then
+            echo "Move.toml not found in subdirectories. Trying root directory..."
+            MOVE_DIR="."
+          fi
+          echo "Found Move contract manifest folder in: $MOVE_DIR"
+          
           npx aptos move build-publish-payload \
-            --package-dir . \
+            --package-dir "$MOVE_DIR" \
             --json-output-file nexus-publish-payload.json \
-            --included-artifacts sparse \
+            --included-artifacts all \
             --assume-yes
 
       # Generate the Cryptographic Build Provenance using GitHub Attestations
