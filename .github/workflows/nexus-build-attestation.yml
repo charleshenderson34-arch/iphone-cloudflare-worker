@@ -1,22 +1,3 @@
-name: Nexus Network Move Build and Attest
-
-on:
-  push:
-    branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
-
-jobs:
-  build-and-attest:
-    runs-on: ubuntu-latest
-
-    # MANDATORY: Explicit permissions required to exchange Sigstore OIDC tokens
-    # and write the signed provenance artifact back to GitHub.
-    permissions:
-      id-token: write
-      contents: read
-      attestations: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,11 +5,10 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          # Upgraded to Node 24 to match the current GitHub Actions runner defaults
           node-version: "24"
           cache: "npm"
-          # Tells setup-node exactly where your package-lock.json lives
-          cache-dependency-path: "my_first_dapp/frontend/package-lock.json"
+          # Points to the relative root directory of your cloned GitHub workspace
+          cache-dependency-path: "package-lock.json" 
 
       # Install Aptos CLI globally using the officially supported npm bundle wrapper
       - name: Install Aptos CLI Toolchain
@@ -36,15 +16,12 @@ jobs:
           npm install @aptos-labs/aptos-cli
           npx aptos --install
 
-      - name: Install Frontend Dependencies
-        # Tells the shell to run npm ci inside your frontend directory
-        working-directory: my_first_dapp/frontend
+      - name: Install Dependencies
+        # Runs directly in the repository root directory
         run: npm ci
 
       # Compile the Move Package & generate the sparse publish payload artifact
       - name: Compile and Build Publish Payload
-        # Adjust the path below if your Move.toml is inside a different subdirectory
-        working-directory: . 
         run: |
           ~/.local/bin/aptos move build-publish-payload \
             --json-output-file nexus-publish-payload.json \
