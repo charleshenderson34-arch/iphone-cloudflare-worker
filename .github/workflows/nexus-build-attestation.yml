@@ -26,13 +26,11 @@ jobs:
         with:
           node-version: "24"
 
-      # Install Aptos CLI tool wrapper locally
       - name: Install Aptos CLI Toolchain
         run: |
           npm install @aptos-labs/aptos-cli
           npx aptos --install
 
-      # Initialise the Aptos local configuration context
       - name: Initialize Aptos Profile
         run: |
           npx aptos init \
@@ -40,7 +38,7 @@ jobs:
             --assume-yes \
             --profile default
 
-      # FIXED: Guarantees sources folder configuration structure exists
+      # PATCHED: Ensures sources folder structure exists for the payload compiler
       - name: Compile and Build Publish Payload
         run: |
           mkdir -p sources
@@ -50,13 +48,11 @@ jobs:
             --included-artifacts all \
             --assume-yes
 
-      # Cryptographically ties your payload to your GitHub Repository profile
       - name: Generate Secure Build Attestation
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: "nexus-publish-payload.json"
 
-      # Export the final attested asset bundle
       - name: Upload Attested Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -87,7 +83,6 @@ jobs:
         with:
           name: nexus-move-build
 
-      # FIXED: Added mkdir -p sources here to prevent compiler error before network broadcast
       - name: Execute On-Chain Contract Publication
         env:
           APTOS_PRIVATE_KEY: ${{ secrets.APTOS_PRIVATE_KEY }}
@@ -97,17 +92,15 @@ jobs:
             exit 1
           fi
           
-          # Initialize the profile mapping with the secure private key variable
           npx aptos init \
             --network testnet \
             --private-key "$APTOS_PRIVATE_KEY" \
             --assume-yes \
             --profile deployer_profile
           
-          # Creates structural folder placeholder to satisfy publish pre-requisites
+          # PATCHED: Ensures sources folder placeholder exists right before publishing
           mkdir -p sources
 
-          # Publish the pre-compiled attested bytecode straight to Testnet
           npx aptos move publish \
             --package-dir . \
             --assume-yes \
