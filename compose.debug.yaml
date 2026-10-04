@@ -1,0 +1,8 @@
+services:
+  iphonecloudflareworker:
+    image: iphonecloudflareworker
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 3000:3000
