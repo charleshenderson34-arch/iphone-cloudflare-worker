@@ -1,0 +1,27 @@
+{
+    "workbench.editor.autoLockGroups": {
+        "default": true,
+        "workbench.editor.chatSession": true,
+        "jupyter-notebook": true,
+        "agentSessionsWelcomePage": true,
+        "notebookOutputEditor": true,
+        "workbench.editorinputs.searchEditorInput": true,
+        "workbench.editor.chatDebug": true,
+        "repl": true,
+        "github-issues": true,
+        "workbench.editors.gettingStartedInput": true,
+        "vscode.markdown.editor": true,
+        "imagePreview.previewEditor": true,
+        "vscode.audioPreview": true,
+        "vscode.videoPreview": true,
+        "luna.editor": true,
+        "hediet.vscode-drawio-text": true,
+        "hediet.vscode-drawio": true,
+        "drawio-inline-editor.drawioEditor": true,
+        "mainThreadWebview-markdown.preview": true,
+        "workbench.input.interactive": true,
+        "drawio-inline-editor.markdownEditor": true
+    },
+    "workbench.editor.centeredLayoutFixedWidth": true,
+    "workbench.editor.closeOnFileDelete": true
+}
